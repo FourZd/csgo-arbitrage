@@ -1,6 +1,7 @@
 import psycopg2
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
+
 
 def get_connection():
     conn = psycopg2.connect(
@@ -13,23 +14,24 @@ def get_cursor(conn):
     cursor = conn.cursor()
     return cursor
 
+
 def get_items(cursor, **requested_fields):
     cursor.execute(f"SELECT {','.join(requested_fields.keys())}")
 
-def get_buff_credentials(cursor):
+
+def get_buff_credentials(cursor, cookie: bool):
     bots = []
     cursor.execute(
-        "SELECT id, proxy, cookie, proxy_user, proxy_password FROM bots ORDER BY id ASC"
+        "SELECT id, proxy, cookie, proxy_user, proxy_password, cookies_updated_at FROM bots ORDER BY id ASC"
     )
     rows = cursor.fetchall()
 
     for row in rows:
+        cookies = None
         raw_cookie = row[2]
-        key_value_pairs = raw_cookie.split("; ")
-        cookies = {}
-        for pair in key_value_pairs:
-            key, value = pair.split("=")
-            cookies[key] = value
+        print(raw_cookie)
+        if raw_cookie:
+            cookies = json.loads(raw_cookie)
         print(cookies)
         bot_credentials = {
             "id": row[0],
@@ -37,11 +39,20 @@ def get_buff_credentials(cursor):
             "cookie": cookies,
             "proxy_user": row[3],
             "proxy_password": row[4],
+            "cookies_updated_at": row[5],
         }
-
-        bots.append(bot_credentials)
+        if cookie and bot_credentials.get("cookie"):
+            bots.append(bot_credentials)
+        elif not cookie and (
+            not bot_credentials.get("cookie")
+            or not bot_credentials.get("cookies_updated_at")
+            or not bot_credentials.get("cookies_updated_at")
+            > datetime.now() - timedelta(days=1)
+        ):
+            bots.append(bot_credentials)
 
     return bots
+
 
 def get_steam_credentials(cursor):
     creds = []
@@ -78,12 +89,14 @@ async def insert_items(cursor, conn, items):
         )
     conn.commit()
 
+
 async def insert_cookies(cursor, bot_id, cookies, conn):
     cookies = json.dumps(cookies)
     print(cookies)
     cursor.execute(
         """
-        UPDATE bots SET cookie = %s WHERE id = %s
-        """, (cookies, bot_id)
+        UPDATE bots SET cookie = %s, cookies_updated_at = %s WHERE id = %s
+        """,
+        (cookies, datetime.now(), bot_id),
     )
     conn.commit()

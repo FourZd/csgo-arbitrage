@@ -96,7 +96,7 @@ async def login(steam_login, steam_password, email, email_password, profile):
             By.XPATH,
             "//input[1]",
         ).send_keys(code)
-    WebDriverWait(driver, 5).until(
+    WebDriverWait(driver, 15).until(
         EC.element_to_be_clickable(
             (
                 By.ID,
@@ -117,6 +117,7 @@ async def login(steam_login, steam_password, email, email_password, profile):
     ).click()
 
     cookie = driver.get_cookies()
+    print(cookie)
     cookie = {c.get('name') : c.get('value') for c in cookie}
     driver.close()
     return cookie
