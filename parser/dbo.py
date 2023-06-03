@@ -1,6 +1,7 @@
 import psycopg2
 from datetime import datetime, timedelta
 import json
+import time
 
 
 def get_connection():
@@ -77,17 +78,40 @@ def get_steam_credentials(cursor):
 
 async def insert_items(cursor, conn, items):
     print(len(items))
-    for item in items:
-        item_values = ", ".join(
-            [f"""'{str(value).replace("'", "''")}'""" for value in item.values()]
-        )
-        cursor.execute(
-            f"""INSERT INTO items (item_id, link, site_price, steam_price, name, updated_at, steam_link)
-            VALUES ({item_values})
-            ON CONFLICT (item_id) DO UPDATE SET site_price = '{item['site_price']}', updated_at = '{datetime.now()}'
-            """
-        )
-    conn.commit()
+    try:
+        with conn.cursor() as cur:
+            # Set statement_timeout only for this transaction
+            cur.execute("SET LOCAL statement_timeout = '7s'")
+
+            # Begin transaction explicitly
+            cur.execute("BEGIN")
+
+            # Prepare the parameterized query
+            placeholders = ", ".join(["%s"] * len(items[0]))
+            query = f"""INSERT INTO items (item_id, link, site_price, steam_price, name, updated_at, steam_link)
+                        VALUES ({placeholders})
+                        ON CONFLICT (item_id) DO UPDATE SET site_price = EXCLUDED.site_price, updated_at = EXCLUDED.updated_at
+                        """
+
+            # Execute the query for all items
+            values = [
+                [str(value).replace("'", "''") for value in item.values()]
+                for item in items
+            ]
+            cur.executemany(query, values)
+
+            # Commit transaction explicitly
+            print("Committing changes")
+            conn.commit()
+            print("Committed")
+    except psycopg2.errors.QueryCanceledError as e:
+        print(f"Error: {e}")
+        conn.rollback()
+        print("Rolled back changes")
+    except psycopg2.errors.InFailedSqlTransaction as e:
+        print(f"Error: {e}")
+        conn.rollback()
+        print("Rolled back changes")
 
 
 async def insert_cookies(cursor, bot_id, cookies, conn):
@@ -100,3 +124,7 @@ async def insert_cookies(cursor, bot_id, cookies, conn):
         (cookies, datetime.now(), bot_id),
     )
     conn.commit()
+
+
+async def get_steam_links(cursor):
+    cursor.execute("SELECT steam_link FROM items")
