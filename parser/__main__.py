@@ -24,16 +24,16 @@ from run_selenium import login, get_firefox_options
 
 
 async def run_chunk(proxy, cookie, chunk, category: bool = False, cookie_timeout: datetime = None):
-    while time.now() < cookie_timeout:
+    while datetime.datetime.now() < cookie_timeout:
         async with aiohttp.ClientSession() as session:
             cookie = json.loads(cookie)
             count = 0
             print(cookie)
-            try:
-                session.cookie_jar.update_cookies(cookie)
-            except Exception as e:
-                print("Error", e)
-                print(cookie)
+            # try:
+            #     session.cookie_jar.update_cookies(cookie)
+            # except Exception as e:
+            #     print("Error", e)
+            #     print(cookie)
             print(f'Chunk {chunk} has started at {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
             conn = await get_async_connection()
             for item_id in chunk:
@@ -47,11 +47,36 @@ async def run_chunk(proxy, cookie, chunk, category: bool = False, cookie_timeout
                                 timeout=10,
                         ) as response:
                             try:
+                                print('Getting json')
                                 item = await response.json()
+                                print('Json returned successfully')
+                            except Exception as e:
+                                print('Error getting json')
+                                print(e)
+                                print('SLeeping')
+                                await asyncio.sleep(30)
+                                print('Breaking')
+                                break
+                        await asyncio.sleep(random.uniform(2.0, 4.0) + random.uniform(-1.0, 1.0))
+                        async with session.get(
+                            f'	https://buff.163.com/api/market/goods/buy_order?game=csgo&goods_id={item_id}&page_num=1&_={round(time.time() * 1000)}',
+                            proxy=f"http://{proxy['proxy_username']}:{proxy['proxy_password']}@{proxy['proxy_host']}",
+                            timeout=10
+                        ) as response:
+                            try:
+                                print('Getting json')
+                                autobuy = await response.json()
+                                print('Json returned successfully')
                             except Exception as e:
                                 print(e)
                         try:
-                            if item['code'] == "OK":
+                            if item['code'] == "OK" and autobuy['code'] == "OK":
+                                try:
+                                    autobuy_price = autobuy['data']['items'][0]['price']
+                                except (IndexError, KeyError):
+                                    autobuy_price = 0
+                                    print('No autobuys')
+
                                 try:
                                     item_category = item['data']['goods_infos'][item_id]["tags"]["rarity"]["localized_name"]
                                     lowest_price = item['data']['items'][0]['price']
@@ -64,32 +89,41 @@ async def run_chunk(proxy, cookie, chunk, category: bool = False, cookie_timeout
                                 except (IndexError, KeyError):
                                     print('No second item')
                                     second_price = None
-
-                                async with session.get(
-                                    f'https://buff.163.com/api/market/goods/bill_order?game=csgo&goods_id={item_id}&_={round(time.time() * 1000)}',
-                                    proxy=f"http://{proxy['proxy_username']}:{proxy['proxy_password']}@{proxy['proxy_host']}",
-                                    timeout=10,
-                                ) as response:
-                                    try:
-                                        sell_history = await response.json()
-                                    except Exception as e:
-                                        print(e)
-                                last_sell_price = sell_history['data']['items'][0]['price']
+                                
+                                # async with session.get(
+                                #     f'https://buff.163.com/api/market/goods/bill_order?game=csgo&goods_id={item_id}&_={round(time.time() * 1000)}',
+                                #     proxy=f"http://{proxy['proxy_username']}:{proxy['proxy_password']}@{proxy['proxy_host']}",
+                                #     timeout=10,
+                                # ) as response:
+                                #     try:
+                                #         sell_history = await response.json()
+                                #     except Exception as e:
+                                #         print(e)
+                                # last_sell_price = sell_history['data']['items'][0]['price']
                                 if category == True:
                                     await update_category(conn, item_id, item_category)
-                                
-                                await update_prices(conn, item_id, lowest_price, second_price, last_sell_price)
+                                print('Updating price')
+                                await update_prices(conn, item_id, lowest_price, second_price, last_sell_price=None, autobuy_price=autobuy_price)
+                                print('Price updated')
                                 count += 1
-                            break
+                                print('Count +1')
+                                break
+                            else:
+                                print(item['code'])
+                                print('Error')
                         except Exception as e:
                             print(e)
+                            await asyncio.sleep(10)
+                    except Exception as e:
+                        await asyncio.sleep(random.uniform(60.0, 120.0))
+                        print(e)
                     except asyncio.TimeoutError:
                         print('TIMEOUT ERROR')
                     except aiohttp.client_exceptions.ClientConnectorSSLError as e:
                         print('SSL ERROR, fix later')
                 print('Left the while cycle', item_id)
                 print('Sleeping...', item_id)
-                await asyncio.sleep(random.uniform(3.0, 4.0) + random.uniform(-1.0, 1.0))
+                await asyncio.sleep(random.uniform(2.0, 4.0) + random.uniform(-1.0, 1.0))
                 print("Finished sleeping!")
     raise TimeoutError
 

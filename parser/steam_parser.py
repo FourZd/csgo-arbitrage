@@ -9,13 +9,12 @@ from dbo import (
     get_steam_links
 )
 import asyncio
-import requests
-import bs4
-import time
 import re
 import numpy
 import random
 import aiohttp
+import datetime
+
 
 async def run_period(proxy, period):
     print('running period with proxy {}'.format(proxy), 'total_len', len(period))
@@ -77,6 +76,16 @@ async def process_item(proxy, item, session, connection):
                     print(f"Inserted item {item} with item ID {item_id}")
                     break
             elif type(item) == int:
+                headers = {
+                    'Accept': '*/*',
+                    'Accept-Encoding': 'gzip, defiate, br',
+                    'Accept-Language': 'en-US,en;q=0.5',
+                    'Connection': 'keep-alive',
+                    'Host': 'steamcommunity.com',
+                    'Sec-Fetch-Dest': 'empty',
+                    'Sec-Fetch-Mode': 'cors',
+
+                    }
                 async with session.get(f'https://steamcommunity.com/market/itemordershistogram?country=RU&language=english&currency=23&item_nameid={item}&two_factor=0') as response:
                     response_text = await response.json()
                     response_code = response.status
@@ -90,7 +99,6 @@ async def process_item(proxy, item, session, connection):
                     autobuy_price = response_text['buy_order_graph'][0][0]
                     print(autobuy_price)
                     await insert_steam_price(connection, item, autobuy_price)
-            elif 
         except Exception as e:
             print(f"Error making request to {item}: {e}")
             await asyncio.sleep(3)

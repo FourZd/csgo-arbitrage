@@ -279,15 +279,15 @@ def get_item_ids(cursor):
     ids = [id[0] for id in ids]
     return ids
 
-async def update_prices(conn, item_id, lowest_price, second_price, last_sell_price):
+async def update_prices(conn, item_id, lowest_price, second_price, last_sell_price, autobuy_price):
     while True:
         async with conn.transaction():
             try:
             
                 await conn.execute("SET SESSION statement_timeout = 7000")
                 await conn.execute(
-                    "UPDATE items SET lowest_price = $1, second_price = $2, last_sell_price = $3 WHERE item_id = $4", 
-                    lowest_price, second_price, last_sell_price, item_id
+                    "UPDATE items SET lowest_price = $1, second_price = $2, last_sell_price = $3, price_updated_at = $4, autobuy_price = $5 WHERE item_id = $6", 
+                    lowest_price, second_price, last_sell_price, datetime.now(), autobuy_price, item_id
                 )
                 break
             except Exception as e:
