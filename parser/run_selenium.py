@@ -126,3 +126,12 @@ def login(steam_login, steam_password, email, email_password, options):
     cookie = {c.get('name') : c.get('value') for c in cookie}
     driver.close()
     return cookie
+
+def get_steam_cookie(proxy, proxy_username, proxy_password):
+    options = get_firefox_options(proxy, proxy_username, proxy_password)
+    driver = webdriver.Firefox(options=options)
+    driver.get('https://steamcommunity.com/market/')
+    cookies = driver.get_cookies()
+    cookies = {c.get('name') : c.get('value') for c in cookies}
+    driver.close()
+    return cookies

@@ -6,7 +6,7 @@ import datetime
 import aiohttp
 import json
 
-from dbo import (
+from parser.dao import (
     get_cookies,
     get_cursor,
     get_connection,
