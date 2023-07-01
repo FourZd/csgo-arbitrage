@@ -52,8 +52,8 @@ async def get_bot_credentials(conn, credential_type=None):
         query = "SELECT id, proxy, proxy_user, proxy_password FROM bots ORDER BY id ASC"
         credential_keys = ["id", "proxy", "proxy_user", "proxy_password"]
         credential_filter = lambda cred: True
-    elif credential_type == "buff cookie":
-        query = "SELECT id, cookie, cookies_updated_at FROM bots"
+    elif credential_type == "buff_cookie":
+        query = "SELECT id, buff_cookie, cookies_updated_at FROM bots"
         credential_keys = ["id", "cookie", "updated_at"]
         credential_filter = lambda cred: cred.get("cookie")
     elif credential_type == "steam_cookie":
@@ -105,6 +105,9 @@ async def get_item_data(conn, requested_data):
     if requested_data == 'steam_ids':
         query = "SELECT name, steam_id FROM items WHERE steam_id IS NOT NULL"
         credential_keys = ["name", "steam_id"]
+    elif requested_data == 'buff_links':
+        query = "SELECT name, link FROM items WHERE steam_id IS NOT NULL"
+        credential_keys = ["name", "link"]
     elif requested_data == 'links':
         query = "SELECT name, steam_link FROM items WHERE steam_id IS NOT NULL"
         credential_keys = ["name", "steam_link"]
@@ -200,7 +203,7 @@ async def update_prices(
                     second_price,
                     last_sell_price,
                     datetime.now(),
-                    autobuy_price,
+                    None,
                     item_id,
                 )
                 break

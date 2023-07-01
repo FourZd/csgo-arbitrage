@@ -21,19 +21,20 @@ async def run_period(proxy, part, cookie=None):
     print("running part with proxy {}".format(proxy), "total_len", len(part))
     count = 0
     connection = await get_async_connection()
-    async with aiohttp.ClientSession() as session:
-        for item in part:
-            print("Done ", count, "from", len(part), "with proxy {}".format(proxy))
-            print("item is {}".format(item))
-            try:
-                print("Entering item {}".format(item))
-                await process_item(proxy, item, session, connection, cookie)
-                count += 1
-                print("Processed item {}".format(item))
-            except Exception as e:
-                print(e)
-        await session.close()
-        await connection.close()
+    while True:
+        async with aiohttp.ClientSession() as session:
+            for item in part:
+                print("Done ", count, "from", len(part), "with proxy {}".format(proxy))
+                print("item is {}".format(item))
+                try:
+                    print("Entering item {}".format(item))
+                    await process_item(proxy, item, session, connection, cookie)
+                    count += 1
+                    print("Processed item {}".format(item))
+                except Exception as e:
+                    print(e)
+            await session.close()
+        await asyncio.sleep(random.uniform(10.00, 25.00) + random.uniform(50.00, 70.00))
 
 
 # Define a function to process each item

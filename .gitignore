@@ -7517,3 +7517,4 @@ env/lib/python3.11/site-packages/yarg-0.1.9.dist-info/WHEEL
 env/lib/python3.11/site-packages/yarg-0.1.9.dist-info/zip-safe
 .vscode/settings.json
 geckodriver.log
+parser/__pycache__/dao.cpython-311.pyc
